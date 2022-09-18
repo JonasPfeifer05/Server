@@ -21,12 +21,19 @@ import java.util.Scanner;
 
 public class Client implements Transferring {
 
-	ObjectInputStream ois;
-	ObjectOutputStream oos;
+	private ObjectInputStream ois;
+	private ObjectOutputStream oos;
 
-	Logger<StandartStatus> logger = new Logger<>(true);
+	private final Logger<StandartStatus> logger = new Logger<>(true);
 
-	Socket socket;
+	private final Socket socket;
+
+	private final Thread saveClose = new Thread(new Runnable() {
+		@Override
+		public void run() {
+			shutdown();
+		}
+	});
 
 	public Client(String host, int port) throws IOException {
 		socket = new Socket(host, port);
@@ -39,31 +46,19 @@ public class Client implements Transferring {
 	}
 
 	private void start() {
-		logger.addMessage(StandartStatus.INFORMATION, "Starting Setup!");
 		setUp();
-		logger.addMessage(StandartStatus.INFORMATION, "Finished Setup!");
 
 		startReceiving();
 	}
 
 	private void setUp() {
+		Runtime.getRuntime().addShutdownHook(saveClose);
 		try {
 			logger.addMessage(StandartStatus.INFORMATION, "Getting streams!");
 			oos = new ObjectOutputStream(socket.getOutputStream());
 			ois = new ObjectInputStream(socket.getInputStream());
 		} catch (IOException e) {
 			logger.addMessage(StandartStatus.ERROR, "Error while getting streams!");
-		}
-	}
-
-	@Override
-	public void send(Transfer transfer) {
-		try {
-			oos.writeObject(transfer);
-			logger.addMessage(StandartStatus.INFORMATION, "Sent package to: " + socket + " of type " + transfer);
-		} catch (IOException e) {
-			logger.addMessage(StandartStatus.PROBLEM, "Failed to send Package!");
-			disconnect("Socket is closed!");
 		}
 	}
 
@@ -97,6 +92,22 @@ public class Client implements Transferring {
 		trafficControl.start();
 	}
 
+	public void shutdown() {
+		disconnect("Shutdown");
+		Runtime.getRuntime().removeShutdownHook(saveClose);
+	}
+
+	@Override
+	public void send(Transfer transfer) {
+		try {
+			oos.writeObject(transfer);
+			logger.addMessage(StandartStatus.INFORMATION, "Sent package to: " + socket + " of type " + transfer);
+		} catch (IOException e) {
+			logger.addMessage(StandartStatus.PROBLEM, "Failed to send Package!");
+			disconnect("Socket is closed!");
+		}
+	}
+
 	public final void disconnect(String reason) {
 		logger.addMessage(StandartStatus.INFORMATION, "Disconnecting client " + socket + " because of: " + reason);
 		try {
@@ -113,6 +124,7 @@ public class Client implements Transferring {
 
 		client.send(new EchoRequest("Hallo Das ist ein Echo"));
 
-		new Scanner(System.in).nextLine();
+		client.shutdown();
+
 	}
 }

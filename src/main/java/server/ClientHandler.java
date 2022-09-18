@@ -35,27 +35,9 @@ public class ClientHandler implements Runnable, Transferring {
 
 	@Override
 	public final void run() {
-		logger.addMessage(StandartStatus.INFORMATION,"Starting Client handler for: " + userSocket);
-
 		setUp();
 		authorizeUser();
 		startReceiving();
-	}
-
-	public final void disconnect(String reason) {
-		logger.addMessage(StandartStatus.INFORMATION, "Disconnecting client " + userSocket + " because of: " + reason);
-		clients.remove(this);
-		try {
-			userSocket.close();
-		} catch (IOException ex) {
-			logger.addMessage(StandartStatus.PROBLEM, ex.getMessage());
-		}
-	}
-
-	public static void disconnectAll(String reason) {
-		while (clients.size() > 0) {
-			clients.get(0).disconnect(reason);
-		}
 	}
 
 	public final void setUp() {
@@ -68,6 +50,7 @@ public class ClientHandler implements Runnable, Transferring {
 			clients.add(this);
 		} catch (IOException e) {
 			logger.addMessage(StandartStatus.PROBLEM, "Couldn´t get streams from user!");
+			disconnect("Couldn´t get streams!");
 		}
 	}
 
@@ -98,19 +81,8 @@ public class ClientHandler implements Runnable, Transferring {
 	}
 
 	@Override
-	public void send(Transfer transfer) {
-		try {
-			objectOutputStream.writeObject(transfer);
-			logger.addMessage(StandartStatus.INFORMATION, "Sent package to: " + userSocket + " of type " + transfer);
-		} catch (IOException e) {
-			logger.addMessage(StandartStatus.PROBLEM, "Failed to send Package!");
-			disconnect("Socket is closed!");
-		}
-	}
-
-	@Override
 	public void startReceiving() {
-		logger.addMessage(StandartStatus.INFORMATION, "Starting traffic controller for user: " + userSocket);
+		logger.addMessage(StandartStatus.INFORMATION, "Accepting packages from client " + userSocket);
 		Thread trafficControl = new Thread(() ->
 		{
 			try {
@@ -122,7 +94,7 @@ public class ClientHandler implements Runnable, Transferring {
 							logger.addMessage(StandartStatus.PROBLEM, "Got non user transfer package!");
 						} else {
 							UserTransfer userTransfer = (UserTransfer) o;
-							logger.addMessage(StandartStatus.INFORMATION, "Received Package from: " + userSocket + " of type " + userTransfer);
+							logger.addMessage(StandartStatus.INFORMATION, "Received Package from " + userSocket + " of type " + userTransfer);
 							userTransfer.handle(this);
 						}
 
@@ -131,11 +103,39 @@ public class ClientHandler implements Runnable, Transferring {
 					}
 				}
 			} catch (IOException e) {
-				logger.addMessage(StandartStatus.ERROR, "Client got disconnected");
+				logger.addMessage(StandartStatus.ERROR, "Cant reach Client");
 			}
-			logger.addMessage(StandartStatus.INFORMATION, "Stopping traffic controller for user: " + userSocket);
+			disconnect("Cant reach Client");
+			logger.addMessage(StandartStatus.INFORMATION, "Not accepting anymore packages from user " + userSocket);
 		});
 		trafficControl.start();
+	}
+
+	public static void disconnectAll(String reason) {
+		while (clients.size() > 0) {
+			clients.get(0).disconnect(reason);
+		}
+	}
+
+	public final void disconnect(String reason) {
+		logger.addMessage(StandartStatus.INFORMATION, "Disconnecting client " + userSocket + " because of: " + reason);
+		clients.remove(this);
+		try {
+			userSocket.close();
+		} catch (IOException ex) {
+			logger.addMessage(StandartStatus.PROBLEM, ex.getMessage());
+		}
+	}
+
+	@Override
+	public void send(Transfer transfer) {
+		try {
+			objectOutputStream.writeObject(transfer);
+			logger.addMessage(StandartStatus.INFORMATION, "Sent package to: " + userSocket + " of type " + transfer);
+		} catch (IOException e) {
+			logger.addMessage(StandartStatus.PROBLEM, "Failed to send Package!");
+			disconnect("Socket is closed!");
+		}
 	}
 
 	public final Socket getUserSocket() {

@@ -10,34 +10,38 @@ repositories {
 }
 
 dependencies {
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.0'
 }
 
 task serverJar(type: Jar) {
     manifest {
         archiveFileName.set("Server.jar")
-        attributes "Main-Class": "server.Server"
+        attributes 'Main-Class': 'server.Server'
     }
-
     from {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
+    with jar
 }
 
 task clientJar(type: Jar) {
     manifest {
         archiveFileName.set("Client.jar")
-        attributes "Main-Class": "client.Client"
+        attributes 'Main-Class': 'client.Client'
     }
-
     from {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
+    with jar
 }
+
+task buildAll(dependsOn: [clientJar, serverJar])
+
 
 jar {
     manifest {
+        archiveFileName.set("Client.jar")
         attributes "Main-Class": "main.Main"
     }
 
@@ -45,6 +49,7 @@ jar {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
 }
+
 
 test {
     useJUnitPlatform()
