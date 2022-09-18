@@ -60,7 +60,7 @@ public class Client implements Transferring {
 	public void send(Transfer transfer) {
 		try {
 			oos.writeObject(transfer);
-			logger.addMessage(StandartStatus.INFORMATION, "Sent package to: " + socket);
+			logger.addMessage(StandartStatus.INFORMATION, "Sent package to: " + socket + " of type " + transfer);
 		} catch (IOException e) {
 			logger.addMessage(StandartStatus.PROBLEM, "Failed to send Package!");
 			disconnect("Socket is closed!");
@@ -81,7 +81,7 @@ public class Client implements Transferring {
 							logger.addMessage(StandartStatus.PROBLEM, "Got non server transfer package!");
 						} else {
 							ServerTransfer serverTransfer = (ServerTransfer) o;
-							logger.addMessage(StandartStatus.INFORMATION, "Received Package from: " + socket);
+							logger.addMessage(StandartStatus.INFORMATION, "Received Package from: " + socket + " of type " + serverTransfer);
 							serverTransfer.handle(this);
 						}
 

@@ -101,7 +101,7 @@ public class ClientHandler implements Runnable, Transferring {
 	public void send(Transfer transfer) {
 		try {
 			objectOutputStream.writeObject(transfer);
-			logger.addMessage(StandartStatus.INFORMATION, "Sent package to: " + userSocket);
+			logger.addMessage(StandartStatus.INFORMATION, "Sent package to: " + userSocket + " of type " + transfer);
 		} catch (IOException e) {
 			logger.addMessage(StandartStatus.PROBLEM, "Failed to send Package!");
 			disconnect("Socket is closed!");
@@ -122,7 +122,7 @@ public class ClientHandler implements Runnable, Transferring {
 							logger.addMessage(StandartStatus.PROBLEM, "Got non user transfer package!");
 						} else {
 							UserTransfer userTransfer = (UserTransfer) o;
-							logger.addMessage(StandartStatus.INFORMATION, "Received Package from: " + userTransfer);
+							logger.addMessage(StandartStatus.INFORMATION, "Received Package from: " + userSocket + " of type " + userTransfer);
 							userTransfer.handle(this);
 						}
 
