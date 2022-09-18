@@ -19,9 +19,6 @@ import java.util.Scanner;
 public class Server {
 	private final ServerSocket serverSocket;
 	private final Logger<StandartStatus> logger;
-	private Thread entryPoint;
-
-	private ArrayList<Socket> users = new ArrayList<>();
 
 	public Server(int port, int maxConnections) throws ServerConstructionException {
 		logger = new Logger<>(true);
@@ -41,24 +38,26 @@ public class Server {
 	}
 
 	public void start() {
-		entryPoint = new Thread() {
+		Thread entrance = new Thread() {
 			@Override
 			public void run() {
-				logger.addMessage(StandartStatus.INFORMATION, "Starting EntryPoint!");
+				logger.addMessage(StandartStatus.INFORMATION, "Starting Entrance!");
 				while (!serverSocket.isClosed()) {
 					try {
 						Socket user = serverSocket.accept();
-						users.add(user);
 						logger.addMessage(StandartStatus.INFORMATION, "New User joined with following data: " + user);
-						new Thread(new ClientHandler(user, logger)).start();
+
+						ClientHandler client = new ClientHandler(user, logger);
+						new Thread(client).start();
 					} catch (IOException e) {
 						logger.addMessage(StandartStatus.PROBLEM, "Error accrued while accepting Users: " + e.getMessage());
 					}
 				}
-				logger.addMessage(StandartStatus.SHUTDOWN, "Stopping EntryPoint!");
+				logger.addMessage(StandartStatus.SHUTDOWN, "Stopping Entrance!");
+				ClientHandler.disconnectAll("Shutting down!");
 			}
 		};
-		entryPoint.start();
+		entrance.start();
 	}
 
 	public void shutDown() {
@@ -72,7 +71,7 @@ public class Server {
 
 	public static void main(String[] args) {
 		try {
-			Server server = new Server(123, 10);
+			Server server = new Server(123, 1);
 			new Scanner(System.in).nextLine();
 			server.shutDown();
 		} catch (ServerConstructionException e) {

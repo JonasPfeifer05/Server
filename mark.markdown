@@ -42,6 +42,11 @@
 #### Everythin should be dynamic and customizable from user to user! 
 #### Lobbies should not interfear with other ones!
 
-Thread to accept new Users. When requesting something from users, first send
-a ping package. Wait a bit, if nothing comes back, close connection!
-Also sometimes send some ping packages to generally check if user is still here.
+2 different classes: ClientTransfer and ServerTransfer. Client/Server
+for Requests and Responses from it. So Clients store ServerTransfer.
+Each Transfer stores a handle function. Client Transfer gets passed
+the Clienthandler. Server transfer gets the Client passed.
+
+To handle transfer we do certain: We have one function to send Request
+Packages. Also one seperate thread which reads in all Packages and
+runs the handle function.
