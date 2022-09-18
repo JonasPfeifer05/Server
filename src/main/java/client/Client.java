@@ -117,12 +117,14 @@ public class Client implements Transferring {
 		}
 	}
 
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws IOException, InterruptedException {
 		Client client = new Client("localhost", 123);
 
-		new Scanner(System.in).nextLine();
+		Thread.sleep(3000);
 
 		client.send(new EchoRequest("Hallo Das ist ein Echo"));
+
+		Thread.sleep(3000);
 
 		client.shutdown();
 
