@@ -3,7 +3,9 @@ package client;
 import networking.BasicProtocol;
 import networking.Transfer;
 import networking.Networking;
+import networking.protocols.math.AddRequest;
 import networking.protocols.echo.EchoRequest;
+import networking.protocols.math.MultiplyRequest;
 import resources.StandartStatus;
 import util.Logger;
 
@@ -116,12 +118,16 @@ public class Client implements Networking {
 		}
 	}
 
-	public static void main(String[] args) throws IOException, InterruptedException {
+	public static void main(String[] args) throws IOException {
 		Client client = new Client("localhost", 123);
 
 		new Scanner(System.in).nextLine();
 
 		client.send(new EchoRequest("Hallo das ist ein echo!"));
+
+		new Scanner(System.in).nextLine();
+
+		client.send(new MultiplyRequest(7, 8));
 
 		new Scanner(System.in).nextLine();
 
