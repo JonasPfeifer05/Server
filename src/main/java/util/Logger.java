@@ -16,7 +16,7 @@ public class Logger<T extends Enum<T>> {
 		this.output = output;
 	}
 
-	public void addMessage(T status, String text) {
+	public void log(T status, String text) {
 		Message<T> message = new Message<>(status, text);
 		messages.add(message);
 		if (output) System.out.println(message);

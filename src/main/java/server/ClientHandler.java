@@ -1,5 +1,6 @@
 package server;
 
+import networking.BasicProtocol;
 import networking.Transfer;
 import networking.Networking;
 import networking.protocols.ping.PingRequest;
@@ -24,18 +25,18 @@ import java.util.concurrent.TimeoutException;
  */
 
 public class ClientHandler implements Runnable, Networking {
-    public static ArrayList<ClientHandler> clients = new ArrayList<>();
+    public static final ArrayList<ClientHandler> clients = new ArrayList<>();
 
-    private final Socket userSocket;
+    private final Socket socket;
     private final Logger<StandartStatus> logger;
 
-    ObjectOutputStream objectOutputStream;
-    ObjectInputStream objectInputStream;
+    private ObjectOutputStream objectOutputStream;
+    private ObjectInputStream objectInputStream;
 
     private final LimitedMap<UUID, Object> responses = new LimitedMap<>(10);
 
-    public ClientHandler(Socket userSocket, Logger<StandartStatus> logger) {
-        this.userSocket = userSocket;
+    public ClientHandler(Socket socket, Logger<StandartStatus> logger) {
+        this.socket = socket;
         this.logger = logger;
     }
 
@@ -48,14 +49,12 @@ public class ClientHandler implements Runnable, Networking {
 
     public final void setUp() {
         try {
-            objectOutputStream = new ObjectOutputStream(userSocket.getOutputStream());
-            logger.addMessage(StandartStatus.INFORMATION, "Received Object writer for client: " + userSocket);
-            objectInputStream = new ObjectInputStream(userSocket.getInputStream());
-            logger.addMessage(StandartStatus.INFORMATION, "Received Object reader for client: " + userSocket);
+            logger.log(StandartStatus.INFORMATION, "Getting streams for client: " + socket);
+            objectOutputStream = new ObjectOutputStream(socket.getOutputStream());
+            objectInputStream = new ObjectInputStream(socket.getInputStream());
 
             clients.add(this);
         } catch (IOException e) {
-            logger.addMessage(StandartStatus.PROBLEM, "Couldn´t get streams from user!");
             disconnect("Couldn´t get streams!");
         }
     }
@@ -65,19 +64,19 @@ public class ClientHandler implements Runnable, Networking {
 
         try {
             objectOutputStream.writeObject(new PingRequest(saveNumber));
-            userSocket.setSoTimeout(5 * 1000);
+            socket.setSoTimeout(5 * 1000);
 
-            logger.addMessage(StandartStatus.INFORMATION, "Waiting for authorization");
+            logger.log(StandartStatus.INFORMATION, "Waiting for authorization");
             Object respond = this.getObjectInputStream().readObject();
 
             if (!(respond instanceof PingResponse)) {
                 disconnect("Failed authorization because of invalid respond Package");
             } else {
 
-                userSocket.setSoTimeout(0);
+                socket.setSoTimeout(0);
                 if (((PingResponse) respond).handle(this) != saveNumber)
                     disconnect("Failed authorization: invalid save number");
-                logger.addMessage(StandartStatus.INFORMATION, "Authorized user: " + userSocket);
+                logger.log(StandartStatus.INFORMATION, "Authorized user: " + socket);
 
             }
         } catch (IOException | ClassNotFoundException e) {
@@ -86,35 +85,35 @@ public class ClientHandler implements Runnable, Networking {
     }
 
     public void startReceiving() {
-        logger.addMessage(StandartStatus.INFORMATION, "Accepting packages from client " + userSocket);
-        Thread trafficControl = new Thread(() ->
+        logger.log(StandartStatus.INFORMATION, "Starting network listener for user" + socket);
+        Thread listener = new Thread(() ->
         {
             try {
                 while (true) {
                     try {
                         Object o = objectInputStream.readObject();
 
-                        if (!(o instanceof Transfer)) {
-                            logger.addMessage(StandartStatus.PROBLEM, "Got non transfer package!");
+                        if (!(o instanceof BasicProtocol)) {
+                            logger.log(StandartStatus.PROBLEM, "Got non transfer package!");
                         } else {
-                            Transfer userTransfer = (Transfer) o;
-                            logger.addMessage(StandartStatus.INFORMATION, "Received Package from " + userSocket + " of type " + userTransfer + " with UUID " + userTransfer.getToken());
+                            BasicProtocol protocol = (BasicProtocol) o;
+                            logger.log(StandartStatus.INFORMATION, "Received Package from " + protocol + " of type " + protocol.getClass().getSimpleName() + " with UUID " + protocol.getToken());
                             new Thread(() -> {
-                                responses.add(userTransfer.getToken(), userTransfer.handle(this));
+                                responses.add(protocol.getToken(), protocol.handle(this));
                             }).start();
                         }
 
                     } catch (ClassNotFoundException e) {
-                        logger.addMessage(StandartStatus.PROBLEM, "Received unknown package!");
+                        logger.log(StandartStatus.PROBLEM, "Received unknown package!");
                     }
                 }
             } catch (IOException e) {
-                logger.addMessage(StandartStatus.ERROR, "Cant reach Client");
+                logger.log(StandartStatus.ERROR, "Cant reach socket " + socket);
             }
-            disconnect("Cant reach Client");
-            logger.addMessage(StandartStatus.INFORMATION, "Not accepting anymore packages from user " + userSocket);
+            disconnect("Cant reach socket " + socket);
+            logger.log(StandartStatus.INFORMATION, "Not accepting anymore packages from socket " + socket);
         });
-        trafficControl.start();
+        listener.start();
     }
 
     public static void disconnectAll(String reason) {
@@ -124,12 +123,12 @@ public class ClientHandler implements Runnable, Networking {
     }
 
     public final void disconnect(String reason) {
-        logger.addMessage(StandartStatus.INFORMATION, "Disconnecting client " + userSocket + " because of: " + reason);
+        logger.log(StandartStatus.PROBLEM, "Disconnecting client " + socket + " because of: " + reason);
         clients.remove(this);
         try {
-            userSocket.close();
+            socket.close();
         } catch (IOException ex) {
-            logger.addMessage(StandartStatus.PROBLEM, ex.getMessage());
+            logger.log(StandartStatus.PROBLEM, ex.getMessage());
         }
     }
 
@@ -137,10 +136,9 @@ public class ClientHandler implements Runnable, Networking {
     public void send(Transfer transfer) {
         try {
             objectOutputStream.writeObject(transfer);
-            logger.addMessage(StandartStatus.INFORMATION, "Sent package to: " + userSocket + " of type " + transfer + " with UUID " + transfer.getToken());
+            logger.log(StandartStatus.INFORMATION, "Sent package to: " + socket + " of type " + transfer.getClass().getSimpleName() + " with UUID " + transfer.getToken());
         } catch (IOException e) {
-            logger.addMessage(StandartStatus.PROBLEM, "Failed to send Package! " + e.getMessage());
-            disconnect("Socket is closed!");
+            disconnect("Failed to send package!");
         }
     }
 
@@ -163,9 +161,9 @@ public class ClientHandler implements Runnable, Networking {
         return responses.pop(token);
     }
 
-    public final Socket getUserSocket() {
+    public final Socket getSocket() {
 
-        return userSocket;
+        return socket;
     }
 
     public final Logger<StandartStatus> getLogger() {

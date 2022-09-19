@@ -8,5 +8,5 @@ package util;
 
 @FunctionalInterface
 public interface Function2Args<T, U, R> {
- public R apply(T t, U u) ;
+ R apply(T t, U u) ;
 }

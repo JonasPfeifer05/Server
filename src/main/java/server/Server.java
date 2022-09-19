@@ -1,15 +1,13 @@
 package server;
 
-import exception.ServerConstructionException;
+import exception.ConstructionException;
 import resources.StandartStatus;
-import util.LimitedMap;
 import util.Logger;
 
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Scanner;
-import java.util.UUID;
 
 /**
  * Created: 16.09.2022
@@ -22,16 +20,15 @@ public class Server {
 	private final Logger<StandartStatus> logger;
 	private final Thread saveClose = new Thread(() -> shutdown());
 
-	public Server(int port, int maxConnections) throws ServerConstructionException {
+	public Server(int port, int maxConnections) throws ConstructionException {
 		logger = new Logger<>(true);
 
-
 		try {
-			logger.addMessage(StandartStatus.STARTING, "Creating Server Socket!");
 			serverSocket = new ServerSocket(port, maxConnections);
+			logger.log(StandartStatus.STARTING, "Created server socket!");
 		} catch (IOException | IllegalArgumentException | SecurityException e) {
-			logger.addMessage(StandartStatus.ERROR, "Error accrued while creating the Server Socket: " + e.getMessage());
-			throw new ServerConstructionException(e.getMessage());
+			logger.log(StandartStatus.ERROR, "Error accrued while creating the server socket: " + e.getMessage());
+			throw new ConstructionException(e.getMessage());
 		}
 
 		setup();
@@ -43,34 +40,31 @@ public class Server {
 	}
 
 	public void startAccepting() {
-		Thread entrance = new Thread() {
-			@Override
-			public void run() {
-				logger.addMessage(StandartStatus.INFORMATION, "Starting to accept Clients!");
-				while (!serverSocket.isClosed()) {
-					try {
-						Socket user = serverSocket.accept();
-						logger.addMessage(StandartStatus.INFORMATION, "New Client joined with following Data " + user);
+		Thread entrance = new Thread(() -> {
+			logger.log(StandartStatus.INFORMATION, "Starting to accept Clients!");
+			while (!serverSocket.isClosed()) {
+				try {
+					Socket user = serverSocket.accept();
+					logger.log(StandartStatus.INFORMATION, "New Client joined with following Data " + user);
 
-						ClientHandler client = new ClientHandler(user, logger);
-						logger.addMessage(StandartStatus.INFORMATION, "Created ClientHandler for Client " + user);
-						new Thread(client).start();
-					} catch (IOException e) {
-						logger.addMessage(StandartStatus.PROBLEM, "Error accrued while accepting Clients: " + e.getMessage());
-					}
+					ClientHandler client = new ClientHandler(user, logger);
+					logger.log(StandartStatus.INFORMATION, "Created ClientHandler for Client " + user);
+					new Thread(client).start();
+				} catch (IOException e) {
+					logger.log(StandartStatus.PROBLEM, "Error accrued while accepting Clients: " + e.getMessage());
 				}
-				logger.addMessage(StandartStatus.SHUTDOWN, "Not accepting any more Clients!");
-				logger.addMessage(StandartStatus.INFORMATION, "Kicking all Clients!");
-				ClientHandler.disconnectAll("Shutting down!");
 			}
-		};
+			logger.log(StandartStatus.SHUTDOWN, "Not accepting any more Clients!");
+			logger.log(StandartStatus.INFORMATION, "Kicking all Clients!");
+			ClientHandler.disconnectAll("Shutting down!");
+		});
 		entrance.start();
 	}
 
 	public void shutdown() {
 		try {
 			serverSocket.close();
-			logger.addMessage(StandartStatus.SHUTDOWN, "ServerSocket closed!");
+			logger.log(StandartStatus.SHUTDOWN, "ServerSocket closed!");
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
@@ -82,7 +76,7 @@ public class Server {
 			Server server = new Server(123, 1);
 			new Scanner(System.in).nextLine();
 			server.shutdown();
-		} catch (ServerConstructionException e) {
+		} catch (ConstructionException e) {
 			throw new RuntimeException(e);
 		}
 	}
