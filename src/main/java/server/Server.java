@@ -2,12 +2,14 @@ package server;
 
 import exception.ServerConstructionException;
 import resources.StandartStatus;
+import util.LimitedMap;
 import util.Logger;
 
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Scanner;
+import java.util.UUID;
 
 /**
  * Created: 16.09.2022
@@ -18,12 +20,7 @@ import java.util.Scanner;
 public class Server {
 	private final ServerSocket serverSocket;
 	private final Logger<StandartStatus> logger;
-	private Thread saveClose = new Thread(new Runnable() {
-		@Override
-		public void run() {
-			shutdown();
-		}
-	});
+	private final Thread saveClose = new Thread(() -> shutdown());
 
 	public Server(int port, int maxConnections) throws ServerConstructionException {
 		logger = new Logger<>(true);

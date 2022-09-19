@@ -1,8 +1,10 @@
 package networking;
 
 import java.io.Serializable;
+import java.util.UUID;
+import java.util.concurrent.TimeoutException;
 
 public interface Networking extends Serializable {
-    public void send(Transfer transfer);
-    public void startReceiving();
+    void send(Transfer transfer);
+    Object await(UUID token, int secTimeout) throws TimeoutException;
 }

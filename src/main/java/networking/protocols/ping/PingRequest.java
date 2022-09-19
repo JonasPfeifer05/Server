@@ -15,8 +15,8 @@ import java.io.Serializable;
 public class PingRequest extends BasicProtocol<Networking, Void> implements Serializable {
 
 	public PingRequest(int ping) {
-		super((Function2Args<Networking, Void, Void> & Serializable) (networking, unused) -> {
-			networking.send(new PingRespond(ping));
+		this.setHandle((Function2Args<Networking, Void, Void> & Serializable) (networking, unused) -> {
+			networking.send(new PingResponse(ping, this.getToken()));
 			return null;
 		});
 	}

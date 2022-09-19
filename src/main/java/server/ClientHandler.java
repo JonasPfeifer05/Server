@@ -3,14 +3,19 @@ package server;
 import networking.Transfer;
 import networking.Networking;
 import networking.protocols.ping.PingRequest;
-import networking.protocols.ping.PingRespond;
+import networking.protocols.ping.PingResponse;
 import resources.StandartStatus;
+import util.Counter;
+import util.LimitedMap;
 import util.Logger;
 
 import java.io.*;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.UUID;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Created: 17.09.2022
@@ -19,136 +24,159 @@ import java.util.HashMap;
  */
 
 public class ClientHandler implements Runnable, Networking {
-	public static ArrayList<ClientHandler> clients = new ArrayList<>();
+    public static ArrayList<ClientHandler> clients = new ArrayList<>();
 
-	private final Socket userSocket;
-	private final Logger<StandartStatus> logger;
+    private final Socket userSocket;
+    private final Logger<StandartStatus> logger;
 
-	ObjectOutputStream objectOutputStream;
-	ObjectInputStream objectInputStream;
+    ObjectOutputStream objectOutputStream;
+    ObjectInputStream objectInputStream;
 
-	public ClientHandler(Socket userSocket, Logger<StandartStatus> logger) {
-		this.userSocket = userSocket;
-		this.logger = logger;
-	}
+    private final LimitedMap<UUID, Object> responses = new LimitedMap<>(10);
 
-	@Override
-	public final void run() {
-		setUp();
-		authorizeUser();
-		startReceiving();
-	}
+    public ClientHandler(Socket userSocket, Logger<StandartStatus> logger) {
+        this.userSocket = userSocket;
+        this.logger = logger;
+    }
 
-	public final void setUp() {
-		try {
-			objectOutputStream = new ObjectOutputStream(userSocket.getOutputStream());
-			logger.addMessage(StandartStatus.INFORMATION, "Received Object writer for client: " + userSocket);
-			objectInputStream = new ObjectInputStream(userSocket.getInputStream());
-			logger.addMessage(StandartStatus.INFORMATION, "Received Object reader for client: " + userSocket);
+    @Override
+    public final void run() {
+        setUp();
+        authorizeUser();
+        startReceiving();
+    }
 
-			clients.add(this);
-		} catch (IOException e) {
-			logger.addMessage(StandartStatus.PROBLEM, "Couldn´t get streams from user!");
-			disconnect("Couldn´t get streams!");
-		}
-	}
+    public final void setUp() {
+        try {
+            objectOutputStream = new ObjectOutputStream(userSocket.getOutputStream());
+            logger.addMessage(StandartStatus.INFORMATION, "Received Object writer for client: " + userSocket);
+            objectInputStream = new ObjectInputStream(userSocket.getInputStream());
+            logger.addMessage(StandartStatus.INFORMATION, "Received Object reader for client: " + userSocket);
 
-	private void authorizeUser() {
-		int saveNumber = (int) (Math.random()*Integer.MAX_VALUE*2-Integer.MAX_VALUE);
+            clients.add(this);
+        } catch (IOException e) {
+            logger.addMessage(StandartStatus.PROBLEM, "Couldn´t get streams from user!");
+            disconnect("Couldn´t get streams!");
+        }
+    }
 
-		try {
-			objectOutputStream.writeObject(new PingRequest(saveNumber));
-			userSocket.setSoTimeout(5 * 1000);
+    private void authorizeUser() {
+        int saveNumber = (int) (Math.random() * Integer.MAX_VALUE * 2 - Integer.MAX_VALUE);
 
-			logger.addMessage(StandartStatus.INFORMATION, "Waiting for authorization");
-			Object respond = this.getObjectInputStream().readObject();
+        try {
+            objectOutputStream.writeObject(new PingRequest(saveNumber));
+            userSocket.setSoTimeout(5 * 1000);
 
-			if (!(respond instanceof PingRespond)) {
-				disconnect("Failed authorization because of invalid respond Package");
-			} else {
+            logger.addMessage(StandartStatus.INFORMATION, "Waiting for authorization");
+            Object respond = this.getObjectInputStream().readObject();
 
-				userSocket.setSoTimeout(0);
-				if (((PingRespond) respond).handle(this) != saveNumber) disconnect("Failed authorization: invalid save number");
-				logger.addMessage(StandartStatus.INFORMATION, "Authorized user: " + userSocket);
+            if (!(respond instanceof PingResponse)) {
+                disconnect("Failed authorization because of invalid respond Package");
+            } else {
 
-			}
-		} catch (IOException | ClassNotFoundException e) {
-			disconnect("Failed authorization: " + e);
-		}
-	}
+                userSocket.setSoTimeout(0);
+                if (((PingResponse) respond).handle(this) != saveNumber)
+                    disconnect("Failed authorization: invalid save number");
+                logger.addMessage(StandartStatus.INFORMATION, "Authorized user: " + userSocket);
 
-	@Override
-	public void startReceiving() {
-		logger.addMessage(StandartStatus.INFORMATION, "Accepting packages from client " + userSocket);
-		Thread trafficControl = new Thread(() ->
-		{
-			try {
-				while (true) {
-					try {
-						Object o = objectInputStream.readObject();
+            }
+        } catch (IOException | ClassNotFoundException e) {
+            disconnect("Failed authorization: " + e);
+        }
+    }
 
-						if (!(o instanceof Transfer)) {
-							logger.addMessage(StandartStatus.PROBLEM, "Got non transfer package!");
-						} else {
-							Transfer userTransfer = (Transfer) o;
-							logger.addMessage(StandartStatus.INFORMATION, "Received Package from " + userSocket + " of type " + userTransfer);
-							Object handle = userTransfer.handle(this);
-						}
+    public void startReceiving() {
+        logger.addMessage(StandartStatus.INFORMATION, "Accepting packages from client " + userSocket);
+        Thread trafficControl = new Thread(() ->
+        {
+            try {
+                while (true) {
+                    try {
+                        Object o = objectInputStream.readObject();
 
-					} catch (ClassNotFoundException e) {
-						logger.addMessage(StandartStatus.PROBLEM, "Received unknown package!");
-					}
-				}
-			} catch (IOException e) {
-				logger.addMessage(StandartStatus.ERROR, "Cant reach Client");
-			}
-			disconnect("Cant reach Client");
-			logger.addMessage(StandartStatus.INFORMATION, "Not accepting anymore packages from user " + userSocket);
-		});
-		trafficControl.start();
-	}
+                        if (!(o instanceof Transfer)) {
+                            logger.addMessage(StandartStatus.PROBLEM, "Got non transfer package!");
+                        } else {
+                            Transfer userTransfer = (Transfer) o;
+                            logger.addMessage(StandartStatus.INFORMATION, "Received Package from " + userSocket + " of type " + userTransfer + " with UUID " + userTransfer.getToken());
+                            new Thread(() -> {
+                                responses.add(userTransfer.getToken(), userTransfer.handle(this));
+                            }).start();
+                        }
 
-	public static void disconnectAll(String reason) {
-		while (clients.size() > 0) {
-			clients.get(0).disconnect(reason);
-		}
-	}
+                    } catch (ClassNotFoundException e) {
+                        logger.addMessage(StandartStatus.PROBLEM, "Received unknown package!");
+                    }
+                }
+            } catch (IOException e) {
+                logger.addMessage(StandartStatus.ERROR, "Cant reach Client");
+            }
+            disconnect("Cant reach Client");
+            logger.addMessage(StandartStatus.INFORMATION, "Not accepting anymore packages from user " + userSocket);
+        });
+        trafficControl.start();
+    }
 
-	public final void disconnect(String reason) {
-		logger.addMessage(StandartStatus.INFORMATION, "Disconnecting client " + userSocket + " because of: " + reason);
-		clients.remove(this);
-		try {
-			userSocket.close();
-		} catch (IOException ex) {
-			logger.addMessage(StandartStatus.PROBLEM, ex.getMessage());
-		}
-	}
+    public static void disconnectAll(String reason) {
+        while (clients.size() > 0) {
+            clients.get(0).disconnect(reason);
+        }
+    }
 
-	@Override
-	public void send(Transfer transfer) {
-		try {
-			objectOutputStream.writeObject(transfer);
-			logger.addMessage(StandartStatus.INFORMATION, "Sent package to: " + userSocket + " of type " + transfer);
-		} catch (IOException e) {
-			logger.addMessage(StandartStatus.PROBLEM, "Failed to send Package! " + e.getMessage());
-			disconnect("Socket is closed!");
-		}
-	}
+    public final void disconnect(String reason) {
+        logger.addMessage(StandartStatus.INFORMATION, "Disconnecting client " + userSocket + " because of: " + reason);
+        clients.remove(this);
+        try {
+            userSocket.close();
+        } catch (IOException ex) {
+            logger.addMessage(StandartStatus.PROBLEM, ex.getMessage());
+        }
+    }
 
-	public final Socket getUserSocket() {
+    @Override
+    public void send(Transfer transfer) {
+        try {
+            objectOutputStream.writeObject(transfer);
+            logger.addMessage(StandartStatus.INFORMATION, "Sent package to: " + userSocket + " of type " + transfer + " with UUID " + transfer.getToken());
+        } catch (IOException e) {
+            logger.addMessage(StandartStatus.PROBLEM, "Failed to send Package! " + e.getMessage());
+            disconnect("Socket is closed!");
+        }
+    }
 
-		return userSocket;
-	}
+    @Override
+    public Object await(UUID token, int secTimeout) throws TimeoutException {
+        final Counter counter = new Counter(secTimeout);
 
-	public final Logger<StandartStatus> getLogger() {
-		return logger;
-	}
+        java.util.Timer timer = new Timer();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                counter.dec();
+            }
+        }, 0, 1000);
 
-	public final ObjectOutputStream getObjectOutputStream() {
-		return objectOutputStream;
-	}
+        while (!responses.contains(token)) {
+            if (counter.getCurrent() <= 0) throw new TimeoutException("Timed out while waiting for package!");
+        }
 
-	public final ObjectInputStream getObjectInputStream() {
-		return objectInputStream;
-	}
+        return responses.pop(token);
+    }
+
+    public final Socket getUserSocket() {
+
+        return userSocket;
+    }
+
+    public final Logger<StandartStatus> getLogger() {
+        return logger;
+    }
+
+    public final ObjectOutputStream getObjectOutputStream() {
+        return objectOutputStream;
+    }
+
+    public final ObjectInputStream getObjectInputStream() {
+        return objectInputStream;
+    }
 }

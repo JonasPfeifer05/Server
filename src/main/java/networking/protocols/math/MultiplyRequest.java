@@ -2,8 +2,7 @@ package networking.protocols.math;
 
 import networking.BasicProtocol;
 import networking.Networking;
-import networking.Transfer;
-import networking.protocols.echo.EchoRespond;
+import networking.protocols.echo.EchoResponse;
 import util.Function2Args;
 
 import java.io.Serializable;
@@ -16,8 +15,8 @@ import java.io.Serializable;
 
 public class MultiplyRequest extends BasicProtocol<Networking, Void> implements Serializable {
 	public MultiplyRequest(int a, int b) {
-		super((Function2Args<Networking, Void, Void> & Serializable) (networking, unused) -> {
-			networking.send(new EchoRespond("" + (a * b)));
+		this.setHandle((Function2Args<Networking, Void, Void> & Serializable) (networking, unused) -> {
+			networking.send(new EchoResponse("" + (a * b), this.getToken()));
 			return null;
 		});
 	}

@@ -3,6 +3,7 @@ package networking;
 import util.Function2Args;
 
 import java.io.Serializable;
+import java.util.UUID;
 
 /**
  * Created: 19.09.2022
@@ -11,7 +12,11 @@ import java.io.Serializable;
  */
 
 public class AdvancedProtocol<T, U, R> extends Transfer<T, U, R>  implements Serializable {
-	public AdvancedProtocol(Function2Args<T, U, R> handle) {
-		super(handle);
+	public AdvancedProtocol() {
+		super();
+	}
+
+	public AdvancedProtocol(UUID token) {
+		super(token);
 	}
 }
