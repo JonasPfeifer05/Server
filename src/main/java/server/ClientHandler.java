@@ -1,11 +1,9 @@
 package server;
 
 import networking.Transfer;
-import networking.Transferring;
-import networking.server.PingRequest;
-import networking.server.ServerTransfer;
-import networking.user.PingRespond;
-import networking.user.UserTransfer;
+import networking.Networking;
+import networking.protocols.ping.PingRequest;
+import networking.protocols.ping.PingRespond;
 import resources.StandartStatus;
 import util.Logger;
 
@@ -19,7 +17,7 @@ import java.util.ArrayList;
  * @author Jonas Pfeifer (jonas)
  */
 
-public class ClientHandler implements Runnable, Transferring {
+public class ClientHandler implements Runnable, Networking {
 	public static ArrayList<ClientHandler> clients = new ArrayList<>();
 
 	private final Socket userSocket;
@@ -65,18 +63,16 @@ public class ClientHandler implements Runnable, Transferring {
 			Object respond = this.getObjectInputStream().readObject();
 
 			if (!(respond instanceof PingRespond)) {
-
-				disconnect("Failed authorization");
-
+				disconnect("Failed authorization because of invalid respond Package");
 			} else {
 
 				userSocket.setSoTimeout(0);
-				if (((PingRespond) respond).number != saveNumber) disconnect("Failed authorization");
+				if (((PingRespond) respond).handle(this) != saveNumber) disconnect("Failed authorization: invalid save number");
 				logger.addMessage(StandartStatus.INFORMATION, "Authorized user: " + userSocket);
 
 			}
 		} catch (IOException | ClassNotFoundException e) {
-			disconnect("Failed authorization");
+			disconnect("Failed authorization: " + e);
 		}
 	}
 
@@ -90,12 +86,12 @@ public class ClientHandler implements Runnable, Transferring {
 					try {
 						Object o = objectInputStream.readObject();
 
-						if (!(o instanceof UserTransfer)) {
-							logger.addMessage(StandartStatus.PROBLEM, "Got non user transfer package!");
+						if (!(o instanceof Transfer)) {
+							logger.addMessage(StandartStatus.PROBLEM, "Got non transfer package!");
 						} else {
-							UserTransfer userTransfer = (UserTransfer) o;
+							Transfer userTransfer = (Transfer) o;
 							logger.addMessage(StandartStatus.INFORMATION, "Received Package from " + userSocket + " of type " + userTransfer);
-							userTransfer.handle(this);
+							Object handle = userTransfer.handle(this);
 						}
 
 					} catch (ClassNotFoundException e) {
@@ -133,7 +129,7 @@ public class ClientHandler implements Runnable, Transferring {
 			objectOutputStream.writeObject(transfer);
 			logger.addMessage(StandartStatus.INFORMATION, "Sent package to: " + userSocket + " of type " + transfer);
 		} catch (IOException e) {
-			logger.addMessage(StandartStatus.PROBLEM, "Failed to send Package!");
+			logger.addMessage(StandartStatus.PROBLEM, "Failed to send Package! " + e.getMessage());
 			disconnect("Socket is closed!");
 		}
 	}

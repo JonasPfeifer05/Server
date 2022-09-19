@@ -1,19 +1,23 @@
 package networking;
 
-import client.Client;
+import util.Function2Args;
 
 import java.io.Serializable;
-import java.util.function.Function;
 
-public class Transfer<T> implements Serializable{
-    public final Function<T, Void> handle;
+/**
+ * Created: 19.09.2022
+ *
+ * @author Jonas Pfeifer (jonas)
+ */
 
+public abstract class Transfer<T, U, R> implements Serializable {
+	private final Function2Args<T, U, R> handle;
 
-    public Transfer(Function<T, Void> handle) {
-        this.handle = handle;
-    }
+	public Transfer(Function2Args<T, U, R> handle) {
+		this.handle = handle;
+	}
 
-    public void handle(T side) {
-        handle.apply(side);
-    }
+	public R handle(T t) {
+		return handle.apply(t, null);
+	}
 }

@@ -1,10 +1,9 @@
 package client;
 
+import networking.BasicProtocol;
 import networking.Transfer;
-import networking.Transferring;
-import networking.server.PingRequest;
-import networking.server.ServerTransfer;
-import networking.user.EchoRequest;
+import networking.Networking;
+import networking.protocols.echo.EchoRequest;
 import resources.StandartStatus;
 import util.Logger;
 
@@ -19,7 +18,7 @@ import java.util.Scanner;
  * @author Jonas Pfeifer (jonas)
  */
 
-public class Client implements Transferring {
+public class Client implements Networking {
 
 	private ObjectInputStream ois;
 	private ObjectOutputStream oos;
@@ -72,22 +71,22 @@ public class Client implements Transferring {
 					try {
 						Object o = ois.readObject();
 
-						if (!(o instanceof ServerTransfer)) {
-							logger.addMessage(StandartStatus.PROBLEM, "Got non server transfer package!");
+						if (!(o instanceof BasicProtocol)) {
+							logger.addMessage(StandartStatus.PROBLEM, "Got non transfer package!");
 						} else {
-							ServerTransfer serverTransfer = (ServerTransfer) o;
+							BasicProtocol serverTransfer = (BasicProtocol) o;
 							logger.addMessage(StandartStatus.INFORMATION, "Received Package from: " + socket + " of type " + serverTransfer);
-							serverTransfer.handle(this);
+							Object handle = serverTransfer.handle(this);
 						}
-
 					} catch (ClassNotFoundException e) {
 						logger.addMessage(StandartStatus.PROBLEM, "Received unknown package!");
 					}
 				}
 			} catch (IOException e) {
-				logger.addMessage(StandartStatus.ERROR, "Client got disconnected");
+				logger.addMessage(StandartStatus.ERROR, "Cant reach Server");
 			}
 			logger.addMessage(StandartStatus.INFORMATION, "Stopping traffic controller for server: " + socket);
+			shutdown();
 		});
 		trafficControl.start();
 	}
@@ -101,10 +100,10 @@ public class Client implements Transferring {
 	public void send(Transfer transfer) {
 		try {
 			oos.writeObject(transfer);
-			logger.addMessage(StandartStatus.INFORMATION, "Sent package to: " + socket + " of type " + transfer);
+			logger.addMessage(StandartStatus.INFORMATION, "Sent package to " + socket + " of type " + transfer);
 		} catch (IOException e) {
-			logger.addMessage(StandartStatus.PROBLEM, "Failed to send Package!");
-			disconnect("Socket is closed!");
+			logger.addMessage(StandartStatus.PROBLEM, "Failed to send Package because of " + e.getMessage());
+			disconnect("Failed to send package!");
 		}
 	}
 
@@ -120,11 +119,11 @@ public class Client implements Transferring {
 	public static void main(String[] args) throws IOException, InterruptedException {
 		Client client = new Client("localhost", 123);
 
-		Thread.sleep(3000);
+		new Scanner(System.in).nextLine();
 
-		client.send(new EchoRequest("Hallo Das ist ein Echo"));
+		client.send(new EchoRequest("Hallo das ist ein echo!"));
 
-		Thread.sleep(3000);
+		new Scanner(System.in).nextLine();
 
 		client.shutdown();
 
