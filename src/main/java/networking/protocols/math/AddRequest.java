@@ -4,6 +4,7 @@ import networking.BasicProtocol;
 import networking.Networking;
 import networking.protocols.echo.EchoResponse;
 import util.Function2Args;
+import util.TargetFlag;
 
 import java.io.Serializable;
 
@@ -15,6 +16,7 @@ import java.io.Serializable;
 
 public class AddRequest extends BasicProtocol<Networking, Void> implements Serializable {
 	public AddRequest(int a, int b) {
+		super(TargetFlag.CLIENT);
 		this.setHandle((Function2Args<Networking, Void, Void> & Serializable) (networking, unused) -> {
 			networking.send(new EchoResponse("" + (a + b), this.getToken()));
 			return null;

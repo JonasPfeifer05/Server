@@ -1,24 +1,24 @@
-package networking.protocols.ping;
+package networking.protocols.math;
 
 import networking.BasicProtocol;
 import networking.Networking;
+import networking.protocols.ping.PingResponse;
 import util.Function2Args;
 import util.TargetFlag;
 
 import java.io.Serializable;
 
 /**
- * Created: 19.09.2022
+ * Created: 20.09.2022
  *
  * @author Jonas Pfeifer (jonas)
  */
 
-public class PingRequest extends BasicProtocol<Networking, Void> implements Serializable {
-
-	public PingRequest(double ping) {
+public class DivideRequest extends BasicProtocol<Networking, Void> {
+	public DivideRequest(double a, double b) {
 		super(TargetFlag.CLIENT);
 		this.setHandle((Function2Args<Networking, Void, Void> & Serializable) (networking, unused) -> {
-			networking.send(new PingResponse(ping, this.getToken()));
+			networking.send(new PingResponse(a / b, this.getToken()));
 			return null;
 		});
 	}

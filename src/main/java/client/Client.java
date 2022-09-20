@@ -6,7 +6,11 @@ import networking.Transfer;
 import networking.Networking;
 import networking.protocols.SleepRequest;
 import networking.protocols.echo.EchoRequest;
+import networking.protocols.math.DivideRequest;
+import networking.protocols.ping.PingRequest;
+import networking.protocols.ping.PingResponse;
 import resources.StandartStatus;
+import util.BasicTypes;
 import util.Counter;
 import util.LimitedMap;
 import util.Logger;
@@ -108,6 +112,56 @@ public class Client implements Networking {
 	}
 
 	@Override
+	public Object request(Enum type, String additional) {
+		Object ret = null;
+
+		ret = getBasic((BasicTypes) type, additional);
+
+		//Add additional testing
+
+		return ret;
+	}
+
+	public Object getBasic(BasicTypes type, String additional) {
+		Object o = null;
+
+		Scanner scanner = new Scanner(System.in);
+
+		try {
+			switch (type) {
+				case STRING -> {
+					System.out.print(additional);
+					o = scanner.nextLine();
+				}
+				case CHAR -> {
+					System.out.print(additional);
+					o = scanner.next().charAt(0);
+				}
+				case INT -> {
+					System.out.print(additional);
+					o = scanner.nextInt();
+				}
+				case LONG -> {
+					System.out.print(additional);
+					o = scanner.nextLong();
+				}
+				case DOUBLE -> {
+					System.out.print(additional);
+					o = scanner.nextDouble();
+				}
+				case BOOLEAN -> {
+					System.out.print(additional);
+					o = scanner.nextBoolean();
+				}
+			}
+		} catch (Exception e) {
+			System.out.println(e.getMessage());
+		}
+
+		return o;
+	}
+
+	@Override
 	public Object await(UUID token, int secTimeout) throws TimeoutException {
 		final Counter counter = new Counter(secTimeout);
 
@@ -137,38 +191,10 @@ public class Client implements Networking {
 
 	public static void main(String[] args) throws ConstructionException {
 		Client client = new Client("localhost", 123);
+	}
 
-		new Scanner(System.in).nextLine();
-
-		Transfer echoRequest = new EchoRequest("Hallo das ist ein echo!");
-		client.send(echoRequest);
-		try {
-			System.out.println(client.await(echoRequest.getToken(), 2));
-		} catch (TimeoutException e) {
-			e.printStackTrace();
-		}
-
-		new Scanner(System.in).nextLine();
-
-		Transfer sleepRequest = new SleepRequest();
-		client.send(sleepRequest);
-
-		try {
-			Thread.sleep(1000);
-		} catch (InterruptedException e) {
-			throw new RuntimeException(e);
-		}
-		client.send(new EchoRequest("Hallo"));
-
-		try {
-			System.out.println(client.await(sleepRequest.getToken(), 20));
-		} catch (TimeoutException e) {
-			e.printStackTrace();
-		}
-
-		new Scanner(System.in).nextLine();
-
-		client.shutdown();
-
+	@Override
+	public String toString() {
+		return socket.toString();
 	}
 }

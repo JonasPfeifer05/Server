@@ -3,6 +3,7 @@ package networking.protocols.echo;
 import networking.BasicProtocol;
 import networking.Networking;
 import util.Function2Args;
+import util.TargetFlag;
 
 import java.io.Serializable;
 
@@ -14,6 +15,7 @@ import java.io.Serializable;
 
 public class EchoRequest extends BasicProtocol<Networking, Void> implements Serializable {
     public EchoRequest(String echo) {
+        super(TargetFlag.CLIENT);
         this.setHandle((Function2Args<Networking, Void, Void> & Serializable) (networking, unused) -> {
             networking.send(new EchoResponse(echo, this.getToken()));
             return null;

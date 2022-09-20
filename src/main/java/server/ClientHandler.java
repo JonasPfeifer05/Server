@@ -3,19 +3,16 @@ package server;
 import networking.BasicProtocol;
 import networking.Transfer;
 import networking.Networking;
+import networking.protocols.echo.EchoResponse;
+import networking.protocols.lobby.LobbyRequest;
 import networking.protocols.ping.PingRequest;
 import networking.protocols.ping.PingResponse;
 import resources.StandartStatus;
-import util.Counter;
-import util.LimitedMap;
-import util.Logger;
+import util.*;
 
 import java.io.*;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeoutException;
 
 /**
@@ -30,6 +27,8 @@ public class ClientHandler implements Runnable, Networking {
     private final Socket socket;
     private final Logger<StandartStatus> logger;
 
+    private Lobby lobby;
+
     private ObjectOutputStream objectOutputStream;
     private ObjectInputStream objectInputStream;
 
@@ -42,8 +41,11 @@ public class ClientHandler implements Runnable, Networking {
 
     @Override
     public final void run() {
+        Lobby.create("Moin", 10, logger);
+        Lobby.join("Moin", this);
         setUp();
         authorizeUser();
+        joinLobby();
         startReceiving();
     }
 
@@ -84,6 +86,24 @@ public class ClientHandler implements Runnable, Networking {
         }
     }
 
+    private void joinLobby() {
+        try {
+            objectOutputStream.writeObject(new LobbyRequest());
+
+            logger.log(StandartStatus.INFORMATION, "Waiting for lobby information");
+            Object response = this.objectInputStream.readObject();
+
+            if (!(response instanceof EchoResponse)) {
+                disconnect("Failed joining lobby because of invalid response Package");
+            } else {
+                Lobby.join(((EchoResponse) response).handle(this), this);
+            }
+
+        } catch (IOException | ClassNotFoundException e) {
+            disconnect("Failed to join lobby: " + e.getMessage());
+        }
+    }
+
     public void startReceiving() {
         logger.log(StandartStatus.INFORMATION, "Starting network listener for user" + socket);
         Thread listener = new Thread(() ->
@@ -96,10 +116,14 @@ public class ClientHandler implements Runnable, Networking {
                         if (!(o instanceof BasicProtocol)) {
                             logger.log(StandartStatus.PROBLEM, "Got non transfer package!");
                         } else {
-                            BasicProtocol protocol = (BasicProtocol) o;
+                            Transfer protocol = (Transfer) o;
                             logger.log(StandartStatus.INFORMATION, "Received Package from " + protocol + " of type " + protocol.getClass().getSimpleName() + " with UUID " + protocol.getToken());
+                            if (protocol.target == TargetFlag.LOBBY) {
+                                lobby.forward(protocol, this);
+                                continue;
+                            }
                             new Thread(() -> {
-                                responses.add(protocol.getToken(), protocol.handle(this));
+                                responses.add(protocol.getToken(), ((BasicProtocol) protocol).handle(this));
                             }).start();
                         }
 
@@ -143,6 +167,56 @@ public class ClientHandler implements Runnable, Networking {
     }
 
     @Override
+    public Object request(Enum type, String additional) {
+        Object ret = null;
+
+        ret = getBasic((BasicTypes) type, additional);
+
+        //Add additional testing
+
+        return ret;
+    }
+
+    public Object getBasic(BasicTypes type, String additional) {
+        Object o = null;
+
+        Scanner scanner = new Scanner(System.in);
+
+        try {
+            switch (type) {
+                case STRING -> {
+                    System.out.print(additional);
+                    o = scanner.nextLine();
+                }
+                case CHAR -> {
+                    System.out.print(additional);
+                    o = scanner.next().charAt(0);
+                }
+                case INT -> {
+                    System.out.print(additional);
+                    o = scanner.nextInt();
+                }
+                case LONG -> {
+                    System.out.print(additional);
+                    o = scanner.nextLong();
+                }
+                case DOUBLE -> {
+                    System.out.print(additional);
+                    o = scanner.nextDouble();
+                }
+                case BOOLEAN -> {
+                    System.out.print(additional);
+                    o = scanner.nextBoolean();
+                }
+            }
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+
+        return o;
+    }
+
+    @Override
     public Object await(UUID token, int secTimeout) throws TimeoutException {
         final Counter counter = new Counter(secTimeout);
 
@@ -176,5 +250,10 @@ public class ClientHandler implements Runnable, Networking {
 
     public final ObjectInputStream getObjectInputStream() {
         return objectInputStream;
+    }
+
+    @Override
+    public String toString() {
+        return socket.toString();
     }
 }

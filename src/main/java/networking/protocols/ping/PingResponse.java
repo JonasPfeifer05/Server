@@ -3,6 +3,7 @@ package networking.protocols.ping;
 import networking.BasicProtocol;
 import networking.Networking;
 import util.Function2Args;
+import util.TargetFlag;
 
 import java.io.Serializable;
 import java.util.UUID;
@@ -13,11 +14,11 @@ import java.util.UUID;
  * @author Jonas Pfeifer (jonas)
  */
 
-public class PingResponse extends BasicProtocol<Networking, Integer> implements Serializable {
+public class PingResponse extends BasicProtocol<Networking, Double> implements Serializable {
 
-	public PingResponse(int ping, UUID token) {
-		super(token);
-		this.setHandle((Function2Args<Networking, Void, Integer> & Serializable) (networking, unused) -> {
+	public PingResponse(double ping, UUID token) {
+		super(token, TargetFlag.CLIENT);
+		this.setHandle((Function2Args<Networking, Void, Double> & Serializable) (networking, unused) -> {
 			return ping;
 		});
 	}

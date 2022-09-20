@@ -1,6 +1,7 @@
 package networking;
 
 import util.Function2Args;
+import util.TargetFlag;
 
 import java.io.Serializable;
 import java.util.UUID;
@@ -13,11 +14,15 @@ import java.util.UUID;
 
 public class BasicProtocol<T, R> extends Transfer<T, Void, R> implements Serializable {
 
-	public BasicProtocol() {
-		super();
+	public BasicProtocol(TargetFlag target) {
+		super(target);
 	}
 
-	public BasicProtocol(UUID token) {
-		super(token);
+	public R handle(T t) {
+		return super.handle(t, null);
+	}
+
+	public BasicProtocol(UUID token, TargetFlag target) {
+		super(token, target);
 	}
 }
