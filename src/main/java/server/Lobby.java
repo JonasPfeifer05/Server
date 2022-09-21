@@ -38,10 +38,12 @@ public class Lobby implements Runnable {
 		this.name = name;
 	}
 
-	public static void join(String name, ClientHandler client) {
+	public static Lobby join(String name, ClientHandler client) {
 		if (!lobbies.containsKey(name)) create(name, 10, client.getLogger());
 
 		lobbies.get(name).addClient(client);
+
+		return lobbies.get(name);
 	}
 
 	public static void create(String name, int maxClients, Logger<StandartStatus> logger) {
@@ -82,6 +84,31 @@ public class Lobby implements Runnable {
 	public void send(Transfer transfer, ClientHandler client) {
 		logger.log(StandartStatus.INFORMATION, "Sending package from Lobby to client " + client);
 		client.send(transfer);
+	}
+
+	public void sendToAll(Transfer transfer) {
+		sendToAll(new ArrayList<>(), transfer);
+	}
+
+	public void sendToAll(ArrayList<ClientHandler> except, Transfer transfer) {
+		for (ClientHandler client : clients) {
+			if (!except.contains(client)){
+				client.send(transfer);
+			}
+		}
+	}
+
+	public void kick(ClientHandler client) {
+		kick(client, "Kicked out of lobby");
+	}
+
+	public void kick(ClientHandler client, String reason) {
+		client.disconnect(reason);
+	}
+
+	public void remove(ClientHandler client) {
+		logger.log(StandartStatus.INFORMATION, "Removed client " + client + " from lobby " + this);
+		this.clients.remove(client);
 	}
 
 	public Object await(UUID token, int secTimeout) throws TimeoutException {

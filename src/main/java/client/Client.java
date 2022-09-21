@@ -6,6 +6,7 @@ import networking.Transfer;
 import networking.Networking;
 import networking.protocols.SleepRequest;
 import networking.protocols.echo.EchoRequest;
+import networking.protocols.lobby.LeaveRequest;
 import networking.protocols.math.DivideRequest;
 import networking.protocols.ping.PingRequest;
 import networking.protocols.ping.PingResponse;
@@ -36,7 +37,7 @@ public class Client implements Networking {
 	private final LimitedMap<UUID, Object> responses = new LimitedMap<>(10);
 	private final Logger<StandartStatus> logger = new Logger<>(true);
 	private final Socket socket;
-	private final Thread saveClose = new Thread(() -> shutdown());
+	private final Thread saveClose = new Thread(this::shutdown);
 
 	public Client(String host, int port) throws ConstructionException {
 		try {
@@ -189,12 +190,16 @@ public class Client implements Networking {
 		}
 	}
 
-	public static void main(String[] args) throws ConstructionException {
-		Client client = new Client("localhost", 123);
-	}
-
 	@Override
 	public String toString() {
 		return socket.toString();
+	}
+
+	public static void main(String[] args) throws ConstructionException, InterruptedException {
+		Client client = new Client("localhost", 123);
+
+		Thread.sleep(5000);
+
+		client.send(new LeaveRequest());
 	}
 }

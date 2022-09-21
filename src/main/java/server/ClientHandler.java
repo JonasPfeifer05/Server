@@ -41,8 +41,6 @@ public class ClientHandler implements Runnable, Networking {
 
     @Override
     public final void run() {
-        Lobby.create("Moin", 10, logger);
-        Lobby.join("Moin", this);
         setUp();
         authorizeUser();
         joinLobby();
@@ -96,7 +94,7 @@ public class ClientHandler implements Runnable, Networking {
             if (!(response instanceof EchoResponse)) {
                 disconnect("Failed joining lobby because of invalid response Package");
             } else {
-                Lobby.join(((EchoResponse) response).handle(this), this);
+                lobby = Lobby.join(((EchoResponse) response).handle(this), this);
             }
 
         } catch (IOException | ClassNotFoundException e) {
@@ -113,7 +111,7 @@ public class ClientHandler implements Runnable, Networking {
                     try {
                         Object o = objectInputStream.readObject();
 
-                        if (!(o instanceof BasicProtocol)) {
+                        if (!(o instanceof Transfer)) {
                             logger.log(StandartStatus.PROBLEM, "Got non transfer package!");
                         } else {
                             Transfer protocol = (Transfer) o;
@@ -149,6 +147,7 @@ public class ClientHandler implements Runnable, Networking {
     public final void disconnect(String reason) {
         logger.log(StandartStatus.PROBLEM, "Disconnecting client " + socket + " because of: " + reason);
         clients.remove(this);
+        lobby.remove(this);
         try {
             socket.close();
         } catch (IOException ex) {
@@ -250,6 +249,10 @@ public class ClientHandler implements Runnable, Networking {
 
     public final ObjectInputStream getObjectInputStream() {
         return objectInputStream;
+    }
+
+    public Lobby getLobby() {
+        return lobby;
     }
 
     @Override
