@@ -4,13 +4,11 @@ import exception.ConstructionException;
 import networking.BasicProtocol;
 import networking.Transfer;
 import networking.Networking;
-import networking.protocols.SleepRequest;
-import networking.protocols.echo.EchoRequest;
+import networking.protocols.echo.EchoResponse;
 import networking.protocols.lobby.LeaveRequest;
-import networking.protocols.math.DivideRequest;
-import networking.protocols.ping.PingRequest;
-import networking.protocols.ping.PingResponse;
+import networking.protocols.lobby.LobbyCreationResponse;
 import resources.StandartStatus;
+import testing.ChessLobby;
 import util.BasicTypes;
 import util.Counter;
 import util.LimitedMap;
@@ -198,8 +196,8 @@ public class Client implements Networking {
 	public static void main(String[] args) throws ConstructionException, InterruptedException {
 		Client client = new Client("localhost", 123);
 
-		Thread.sleep(5000);
+		Thread.sleep(1000);
 
-		client.send(new LeaveRequest());
+		client.send(new EchoResponse("asd", null));
 	}
 }

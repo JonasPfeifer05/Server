@@ -1,4 +1,4 @@
-package networking.protocols.math;
+package testing.math;
 
 import networking.BasicProtocol;
 import networking.Networking;

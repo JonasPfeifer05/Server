@@ -19,9 +19,6 @@ public class LobbyRequest extends BasicProtocol<Client, Void> implements Seriali
 	public LobbyRequest() {
 		super(TargetFlag.CLIENT);
 		this.setHandle((Function2Args<Client, Void, Void> & Serializable) (client, unused) -> {
-			String code = (String) client.request(BasicTypes.STRING, "Enter lobby name: ");
-
-			client.send(new EchoResponse(code, this.getToken()));
 
 			return null;
 		});

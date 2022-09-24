@@ -4,6 +4,7 @@ import networking.BasicProtocol;
 import networking.Transfer;
 import networking.Networking;
 import networking.protocols.echo.EchoResponse;
+import networking.protocols.lobby.LobbyCreationResponse;
 import networking.protocols.lobby.LobbyRequest;
 import networking.protocols.ping.PingRequest;
 import networking.protocols.ping.PingResponse;
@@ -91,10 +92,17 @@ public class ClientHandler implements Runnable, Networking {
             logger.log(StandartStatus.INFORMATION, "Waiting for lobby information");
             Object response = this.objectInputStream.readObject();
 
-            if (!(response instanceof EchoResponse)) {
+            if (!(response instanceof EchoResponse || response instanceof LobbyCreationResponse)) {
                 disconnect("Failed joining lobby because of invalid response Package");
             } else {
-                lobby = Lobby.join(((EchoResponse) response).handle(this), this);
+                if (response instanceof EchoResponse) {
+                    lobby = Lobby.join(((EchoResponse) response).handle(this), this);
+                } else {
+                    String lobbyName = Lobby.create(((LobbyCreationResponse) response).handle(this), logger);
+                    System.out.println(lobbyName);
+                    lobby = Lobby.join(lobbyName, this);
+                }
+                if (lobby == null) disconnect("Error while joining/creating lobby!");
             }
 
         } catch (IOException | ClassNotFoundException e) {
@@ -147,7 +155,7 @@ public class ClientHandler implements Runnable, Networking {
     public final void disconnect(String reason) {
         logger.log(StandartStatus.PROBLEM, "Disconnecting client " + socket + " because of: " + reason);
         clients.remove(this);
-        lobby.remove(this);
+        if (lobby != null) lobby.remove(this);
         try {
             socket.close();
         } catch (IOException ex) {

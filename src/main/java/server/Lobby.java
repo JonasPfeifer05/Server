@@ -1,16 +1,12 @@
 package server;
 
-import client.Client;
-import networking.AdvancedProtocol;
-import networking.BasicProtocol;
-import networking.Networking;
 import networking.Transfer;
 import resources.StandartStatus;
 import util.Counter;
 import util.LimitedMap;
 import util.Logger;
 
-import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.concurrent.TimeoutException;
 
@@ -23,10 +19,10 @@ import java.util.concurrent.TimeoutException;
 public class Lobby implements Runnable {
 	private static final HashMap<String, Lobby> lobbies = new HashMap<>();
 
-	private final Logger<StandartStatus> logger;
+	protected final Logger<StandartStatus> logger;
 	private final int maxClients;
 
-	private final ArrayList<ClientHandler> clients = new ArrayList<>();
+	protected final ArrayList<ClientHandler> clients = new ArrayList<>();
 
 	private final LimitedMap<UUID, Object> responses = new LimitedMap<>(100);
 
@@ -39,30 +35,46 @@ public class Lobby implements Runnable {
 	}
 
 	public static Lobby join(String name, ClientHandler client) {
-		if (!lobbies.containsKey(name)) create(name, 10, client.getLogger());
+		if (!lobbies.containsKey(name)) {
+			client.getLogger().log(StandartStatus.PROBLEM, "Client " + client + " wanted to join none existing Lobby!");
+			return null;
+		}
 
-		lobbies.get(name).addClient(client);
+		if (!lobbies.get(name).addClient(client)) {
+			return null;
+		}
+		lobbies.get(name).onJoin(client);
 
 		return lobbies.get(name);
 	}
 
-	public static void create(String name, int maxClients, Logger<StandartStatus> logger) {
+	public void onJoin(ClientHandler handler) {}
 
-		if (lobbies.containsKey(name)) {
+	public static String create(LobbyData data, Logger<StandartStatus> logger) {
+
+		if (lobbies.containsKey(data.name())) {
 			logger.log(StandartStatus.PROBLEM, "Coudlnt create lobby because it already exists!");
-			return;
+			return null;
 		}
-		logger.log(StandartStatus.INFORMATION, "Created new lobby " + name);
-		lobbies.put(name, new Lobby(name, logger, maxClients));
+		logger.log(StandartStatus.INFORMATION, "Created new lobby " + data.name());
+		try {
+			lobbies.put(data.name(), data.clazz().getConstructor(String.class, Logger.class, int.class).newInstance(data.name(), logger, data.maxClients()));
+		} catch (Exception e) {
+			System.out.println(e.getMessage());
+			return null;
+		}
+
+		return data.name();
 	}
 
-	public void addClient(ClientHandler client) {
+	public boolean addClient(ClientHandler client) {
 		if (clients.size() >= maxClients) {
 			logger.log(StandartStatus.PROBLEM, "Client connection to Lobby " + this + " refused because it is full!");
-			return;
+			return false;
 		}
 		logger.log(StandartStatus.INFORMATION, "Client " + client + " joined Lobby " + this);
 		clients.add(client);
+		return true;
 	}
 
 	@Override
