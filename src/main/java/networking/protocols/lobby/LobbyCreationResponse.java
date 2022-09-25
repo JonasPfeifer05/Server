@@ -12,8 +12,11 @@ import java.io.Serializable;
 public class LobbyCreationResponse extends BasicProtocol<ClientHandler, LobbyData> implements Serializable {
     public LobbyCreationResponse(Class<? extends Lobby> clazz, String name, int maxClients) {
         super(TargetFlag.CLIENT);
+        /*
         this.setHandle((Function2Args<ClientHandler, Void, LobbyData> & Serializable) (clientHandler, unused) -> {
             return new LobbyData(clazz, name, maxClients);
         });
+         */
+        this.setHandle((Function2Args<ClientHandler, Void, LobbyData> & Serializable) (clientHandler, unused) -> new LobbyData(clazz, name, maxClients));
     }
 }

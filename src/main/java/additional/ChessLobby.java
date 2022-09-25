@@ -1,4 +1,4 @@
-package testing;
+package additional;
 
 import resources.StandartStatus;
 import server.ClientHandler;
@@ -12,6 +12,6 @@ public class ChessLobby extends Lobby {
 
     @Override
     public void onJoin(ClientHandler handler) {
-        logger.log(StandartStatus.INFORMATION, "Client joined: " + handler);
+        logger.log(StandartStatus.INFORMATION, "Hello " + handler + " in the chess lobby + " + this);
     }
 }

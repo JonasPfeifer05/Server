@@ -1,14 +1,12 @@
 package client;
 
+import additional.ChessLobby;
 import exception.ConstructionException;
 import networking.BasicProtocol;
 import networking.Transfer;
 import networking.Networking;
-import networking.protocols.echo.EchoResponse;
-import networking.protocols.lobby.LeaveRequest;
 import networking.protocols.lobby.LobbyCreationResponse;
 import resources.StandartStatus;
-import testing.ChessLobby;
 import util.BasicTypes;
 import util.Counter;
 import util.LimitedMap;
@@ -196,8 +194,8 @@ public class Client implements Networking {
 	public static void main(String[] args) throws ConstructionException, InterruptedException {
 		Client client = new Client("localhost", 123);
 
-		Thread.sleep(1000);
+		Thread.sleep(100);
 
-		client.send(new EchoResponse("asd", null));
+		client.send(new LobbyCreationResponse(ChessLobby.class, "test", 4));
 	}
 }
